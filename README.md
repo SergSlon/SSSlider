@@ -1,0 +1,4 @@
+SSSlider
+========
+
+jQuery modular slider
