@@ -18,7 +18,7 @@
 * ▬ sss.next
 * */
 
-;(function ($, win, doc, undefined) {
+;(function ($, undefined) {
 	"use strict";
 
 	//==================================================================================================================
@@ -103,7 +103,7 @@
 						pluginOptions = plugins[plugin];
 
 					if ($.isFunction(this.plugins[plugin]))
-						this.plugins[plugin](this, pluginOptions, $, win, doc, undefined);
+						this.plugins[plugin](this, pluginOptions);
 				}
 			}
 			return this;
@@ -269,4 +269,4 @@
 	// default plugins
 	$.fn.SSSlider.plugins = {};
 
-})(window.jQuery, window, document);
+})(window.jQuery);
