@@ -75,11 +75,11 @@
 				};
 
 				plugin.enableRandomSlide = function () {
-					SSSlider.moveTo = (function (fn) {
-						return function (slideIndex) {
-							fn.call(this, plugin.getRandomSlide());
+					SSSlider.getFutureSlideIndex = (function (fn) {
+						return function () {
+							return plugin.getRandomSlide();
 						};
-					})(SSSlider.moveTo);
+					})(SSSlider.getFutureSlideIndex);
 				};
 
 				if (plugin.options.alwaysRandom)
