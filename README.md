@@ -8,7 +8,6 @@ Usage
 =====
 ```
 <script type="text/javascript">
-```javascript
 	// jquery document ready
 	$(function () {
 		// self-invoking Anonymous Function
@@ -17,6 +16,5 @@ Usage
 			$('#slider').SSSlider();
 		}());
 	});
-```
 </script>
 ```
