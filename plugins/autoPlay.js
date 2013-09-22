@@ -24,124 +24,129 @@
 	"use strict";
 
 	$.extend($.fn.SSSlider.plugins, {
+
 		autoPlay: function (SSSlider, options) {
+			var plugin = this,
+				defaults = {
+					// [int] milliseconds
+					// time of displaying each slide
+					stepTime:2500,
+					// [bool] enable or disable auto play pause
+					// when hovering or touching the slide
+					pauseOnHover:false
+				};
 
-			(function(SSSlider, options, win){
-				var plugin = {},
-					defaults = {
-						// [int] milliseconds
-						// time of displaying each slide
-						stepTime:2500,
-						// [bool] enable or disable auto play pause
-						// when hovering or touching the slide
-						pauseOnHover:false
-					};
+			plugin.options = $.extend({}, defaults, options);
 
-				plugin.options = $.extend({}, defaults, options);
+			plugin.player = function(stepTime){
+				var start,
+					remaining = stepTime,
+					self = this;
 
-				plugin.player = function(stepTime){
-					var start,
-						remaining = stepTime,
-						self = this;
+				var playEvent = SSSlider.attachPreventableEvent('sss.player.init');
+				if(!playEvent)
+					return;
 
-					var playEvent = SSSlider.attachPreventableEvent('sss.player.init');
+				this.play = function() {
+					start = new Date();
+
+					SSSlider.playerID = win.setTimeout(function() {
+						remaining = stepTime;
+
+						var playEvent = SSSlider.attachPreventableEvent('sss.player.play');
+						if(!playEvent)
+							return;
+
+						self.play();
+						SSSlider.next();
+
+					}, remaining);
+				};
+
+				this.stop = function(){
+					var playEvent = SSSlider.attachPreventableEvent('sss.player.stop');
 					if(!playEvent)
 						return;
 
-					this.play = function() {
-						start = new Date();
-
-						SSSlider.playerID = win.setTimeout(function() {
-							remaining = stepTime;
-
-							var playEvent = SSSlider.attachPreventableEvent('sss.player.play');
-							if(!playEvent)
-								return;
-
-							self.play();
-							SSSlider.next();
-
-						}, remaining);
-					};
-
-					this.stop = function(){
-						var playEvent = SSSlider.attachPreventableEvent('sss.player.stop');
-						if(!playEvent)
-							return;
-
-						win.clearTimeout(SSSlider.playerID);
-					};
-
-					this.pause = function() {
-						var playEvent = SSSlider.attachPreventableEvent('sss.player.pause');
-						if(!playEvent)
-							return;
-
-						this.stop();
-						remaining -= new Date() - start;
-					};
-
-					this.restart = function(){
-						this.stop();
-						remaining = stepTime;
-						this.play();
-						SSSlider.$element.trigger('sss.player.restart');
-					};
-
-					this.getRemaining = function(){
-						return remaining;
-					}
+					win.clearTimeout(SSSlider.playerID);
 				};
 
-				plugin.checkPauseOnHover = function(){
-					if (plugin.options.pauseOnHover){
-						SSSlider.$element.one('mousemove touchmove',function () {
-							SSSlider.player.pause();
-						});
+				this.pause = function() {
+					var playEvent = SSSlider.attachPreventableEvent('sss.player.pause');
+					if(!playEvent)
+						return;
 
-						SSSlider.$element.on('mouseenter touchenter',function () {
-							SSSlider.player.pause();
-						}).on('mouseleave touchleave touchcancel', function () {
-							SSSlider.player.play();
-							SSSlider.$element.trigger('sss.player.resume');
-						});
-					}
+					this.stop();
+					remaining -= new Date() - start;
 				};
 
-				plugin.runPlayer = function(){
-					var stepTime = Math.abs(plugin.options.stepTime);
+				this.restart = function(){
+					this.stop();
+					remaining = stepTime;
+					this.play();
+					SSSlider.$element.trigger('sss.player.restart');
+				};
 
-					if (stepTime > 0){
+				this.setStepTime = function(newStepTime){
+					stepTime = newStepTime || stepTime;
+				};
 
-						SSSlider.player = new plugin.player(plugin.options.stepTime);
+				this.getStepTime = function(){
+					return stepTime;
+				};
+
+				this.getRemaining = function(){
+					return remaining;
+				}
+			};
+
+			plugin.checkPauseOnHover = function(){
+				if (plugin.options.pauseOnHover){
+					SSSlider.$element.one('mousemove touchmove',function () {
+						SSSlider.player.pause();
+					});
+
+					SSSlider.$element.on('mouseenter touchenter',function () {
+						SSSlider.player.pause();
+					}).on('mouseleave touchleave touchcancel', function () {
 						SSSlider.player.play();
+						SSSlider.$element.trigger('sss.player.resume');
+					});
+				}
+			};
+
+			plugin.runPlayer = function(){
+				var stepTime = Math.abs(plugin.options.stepTime);
+
+				if (stepTime > 0){
+
+					SSSlider.player = new plugin.player(plugin.options.stepTime);
+					SSSlider.player.play();
+					SSSlider.player.isPaused = false;
+
+					plugin.checkPauseOnHover();
+
+					SSSlider.$element.on('sss.player.pause', function(){
+						SSSlider.player.isPaused = true;
+					});
+
+					SSSlider.$element.on('sss.player.resume', function(){
 						SSSlider.player.isPaused = false;
+					});
 
-						plugin.checkPauseOnHover();
+					// restart player when move
+					SSSlider.$element.on('sss.move', function(){
+						SSSlider.player.restart();
+						if(SSSlider.player.isPaused)
+							SSSlider.player.pause();
+					});
 
-						SSSlider.$element.on('sss.player.pause', function(){
-							SSSlider.player.isPaused = true;
-						});
+				}
+			};
 
-						SSSlider.$element.on('sss.player.resume', function(){
-							SSSlider.player.isPaused = false;
-						});
-
-						// restart player when move
-						SSSlider.$element.on('sss.move', function(){
-							SSSlider.player.restart();
-							if(SSSlider.player.isPaused)
-								SSSlider.player.pause();
-						});
-
-					}
-				};
-
-				plugin.runPlayer();
-
-			}(SSSlider, options, win));
+			plugin.runPlayer();
 
 		}
-	});
 
+	});
 })(window);
