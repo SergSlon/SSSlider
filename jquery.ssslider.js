@@ -39,6 +39,18 @@
 
 	//==================================================================================================================
 
+	var bind = function (f, o) {
+		if(f.bind)
+			return f.bind(o);
+		else
+			return function(){
+				// emulate bind function for ECMAScript 3
+				return f.apply(o, arguments);
+			}
+	};
+
+	//==================================================================================================================
+
 	var pluginDefaults = {
 
 		// [string] active slide selector
@@ -55,7 +67,7 @@
 
 		// [object] for extending plugins
 		// example: autoPlay:{speed:200}
-		plugins: ''
+		plugins: {}
 	};
 
 	// Constructor function
@@ -79,8 +91,8 @@
 		update: function (element, options, activeSlideIndex, plugins) {
 			this.element = element;
 			this.$element = $(element);
+			this.plugins = plugins;
 			this.options = $.extend({}, $.fn[this.name].defaults, this.$element.data(), options);
-			this.plugins = $.extend({}, $.fn[this.name].plugins, this.$element.data(), plugins);
 			this.$slides = getSlides.call(this);
 
 			// define this.$activeSlide
@@ -102,8 +114,14 @@
 					if (!$.isEmptyObject(plugins[plugin]))
 						pluginOptions = plugins[plugin];
 
-					if ($.isFunction(this.plugins[plugin]))
-						this.plugins[plugin](this, pluginOptions);
+					if ($.isFunction(this.plugins[plugin])){
+						var pluginFunction = this.plugins[plugin],
+						// inside plugin,
+						// assign "this" variable equals to the "pluginFunction" variable
+							callPlugin = bind.call(null, pluginFunction, pluginFunction);
+
+						callPlugin (this, pluginOptions);
+					}
 				}
 			}
 			return this;
