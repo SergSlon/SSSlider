@@ -25,6 +25,9 @@
 					// [bool] show the text of the button
 					buttonText: true,
 
+					// [string] active button class
+					activeButtonClass: 'active',
+
 					selectors: {
 						// [string] slider buttons container selector
 						container: '.buttons',
@@ -33,9 +36,7 @@
 						// [string] slide button number container selector
 						buttonNumber: '.number',
 						// [string] slide button text container selector
-						buttonText: '.text',
-						// [string] active button class
-						activeButtonClass: 'active'
+						buttonText: '.text'
 					}
 				};
 
@@ -89,11 +90,11 @@
 				$buttons = SSSlider.findBySelector(buttonS);
 
 				var addActiveClass = function (buttonIndex) {
-					$buttons.eq(buttonIndex).addClass(plugin.options.selectors.activeButtonClass);
+					$buttons.eq(buttonIndex).addClass(plugin.options.activeButtonClass);
 				};
 
 				var removeActiveClass = function (buttonIndex) {
-					$buttons.eq(buttonIndex).removeClass(plugin.options.selectors.activeButtonClass);
+					$buttons.eq(buttonIndex).removeClass(plugin.options.activeButtonClass);
 				};
 
 				SSSlider.$element.on('sss.init', function () {
