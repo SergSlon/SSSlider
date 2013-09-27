@@ -33,7 +33,11 @@
 					stepTime:2500,
 					// [bool] enable or disable auto play pause
 					// when hovering or touching the slide
-					pauseOnHover:false
+					pauseOnHover:false,
+					// [string] class that adds to the slider when triggered pause on hover
+					pausedClass:'paused',
+					// [string] class that adds to the slider when pause on hover ends
+					resumedClass:'resumed'
 				};
 
 			plugin.options = $.extend({}, defaults, options);
@@ -128,10 +132,21 @@
 
 					SSSlider.$element.on('sss.player.pause', function(){
 						SSSlider.player.isPaused = true;
+						SSSlider.$element.addClass(plugin.options.pausedClass);
 					});
 
 					SSSlider.$element.on('sss.player.resume', function(){
 						SSSlider.player.isPaused = false;
+						SSSlider.$element.
+							removeClass(plugin.options.pausedClass).
+							addClass(plugin.options.resumedClass);
+
+						win.clearTimeout(resumeTimer);
+						resumeTimer = win.setTimeout(
+							function(){
+								SSSlider.$element.removeClass(plugin.options.resumedClass);
+							}, 1500
+						);
 					});
 
 					// restart player when move
