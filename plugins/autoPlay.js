@@ -120,7 +120,8 @@
 			};
 
 			plugin.runPlayer = function(){
-				var stepTime = Math.abs(plugin.options.stepTime);
+				var stepTime = Math.abs(plugin.options.stepTime),
+					resumeTimer;
 
 				if (stepTime > 0){
 
