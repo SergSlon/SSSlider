@@ -87,7 +87,7 @@
 
 				generateButtonsHtml();
 				$buttonsContainer.append(buttonsHTML);
-				$buttons = SSSlider.findBySelector(buttonS);
+				$buttons = $buttonsContainer.find(buttonS);
 
 				var addActiveClass = function (buttonIndex) {
 					$buttons.eq(buttonIndex).addClass(plugin.options.activeButtonClass);
