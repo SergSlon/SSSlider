@@ -1,168 +1,214 @@
-/* * * *
- * autoPlay
+/**
+ * @version 1.1
  *
- * this file is a part of SSSlider - jQuery modular slider
+ * @extension auto play plugin
+ * @extends $.fn.SSSlider.plugins
+ * @requires jQuery SSSlider plugin
  *
- * Copyright (c) 2013 Sergei Lyamin
- * https://github.com/SergSlon
+ * ======================================================
+ * add to the SSSlider "player" object,
+ * which has play, stop, pause, restart, setStepTime, getStepTime, getRemaining methods.
+ * ======================================================
+ *
+ * @author Sergei Liamin https://github.com/SergSlon
+ * @see https://github.com/SergSlon/SSSlider
+ *
+ * Copyright (c) 2013 Sergei Liamin
  *
  * Licensed under the MIT license:
  * http://www.opensource.org/licenses/mit-license.php
- * */
+ *
+ * this file is a part of SSSlider - jQuery modular slider
+ **/
 
-/*
+/**
  * EVENTS
- * ▬ sss.player.init
- * ▬ sss.player.play
- * ▬ sss.player.stop
- * ▬ sss.player.restart
- * ▬ sss.player.pause
- * ▬ sss.player.resume
- * */
+ * @event sss.player.init
+ * @event sss.player.play
+ * @event sss.player.stop
+ * @event sss.player.restart
+ * @event sss.player.pause
+ * @event sss.player.resume
+ **/
 
 ;(function (win) {
-	"use strict";
+    "use strict";
 
-	$.extend($.fn.SSSlider.plugins, {
+    $.extend($.fn.SSSlider.plugins, {
 
-		autoPlay: function (SSSlider, options) {
-			var plugin = this,
-				defaults = {
-					// [int] milliseconds
-					// time of displaying each slide
-					stepTime:2500,
-					// [bool] enable or disable auto play pause
-					// when hovering or touching the slide
-					pauseOnHover:false,
-					// [string] class that adds to the slider when triggered pause on hover
-					pausedClass:'paused',
-					// [string] class that adds to the slider when pause on hover ends
-					resumedClass:'resumed'
-				};
+        autoPlay: function (SSSlider, options) {
+            var plugin = this,
+                defaults = {
+                    /**
+                     * @property stepTime {number} - milliseconds, time of displaying each slide
+                     */
+                    stepTime: 2500,
 
-			plugin.options = $.extend({}, defaults, options);
+                    /**
+                     * @property pauseOnHover {boolean} - enable or disable auto play pause, when hovering or touching the slide
+                     */
+                    pauseOnHover: false,
 
-			plugin.player = function(stepTime){
-				var start,
-					remaining = stepTime,
-					self = this;
+                    /**
+                     * @property addAdditionalClasses {boolean} - add classes(when paused and resumed) to the slider $element
+                     */
+                    addAdditionalClasses: false,
 
-				var playEvent = SSSlider.attachPreventableEvent('sss.player.init');
-				if(!playEvent)
-					return;
+                    /**
+                     * @property additionalClassesTime {number} - milliseconds, time of "living" resumed class
+                     */
+                    additionalClassesTime: 1500,
 
-				this.play = function() {
-					start = new Date();
+                    /**
+                     * @property pauseOnHover {string} - class that adds to the slider when triggered pause on hover
+                     */
+                    pausedClass: 'paused',
 
-					SSSlider.playerID = win.setTimeout(function() {
-						remaining = stepTime;
+                    /**
+                     * @property resumedClass {string} - class that adds to the slider when pause on hover ends
+                     */
+                    resumedClass: 'resumed'
+                };
 
-						var playEvent = SSSlider.attachPreventableEvent('sss.player.play');
-						if(!playEvent)
-							return;
+            plugin.options = SSSlider.plugins.autoPlay.options = $.extend({}, defaults, options);
 
-						self.play();
-						SSSlider.next();
+            /**
+             * @param stepTime {number} - milliseconds, time of displaying each slide
+             */
+            var player = function (stepTime) {
+                var start,
+                    remaining = stepTime,
+                    self = this;
 
-					}, remaining);
-				};
+                var playEvent = SSSlider.attachPreventableEvent('sss.player.init');
+                if (!playEvent)
+                    return;
 
-				this.stop = function(){
-					var playEvent = SSSlider.attachPreventableEvent('sss.player.stop');
-					if(!playEvent)
-						return;
 
-					win.clearTimeout(SSSlider.playerID);
-				};
+                this.play = function () {
+                    start = new Date();
 
-				this.pause = function() {
-					var playEvent = SSSlider.attachPreventableEvent('sss.player.pause');
-					if(!playEvent)
-						return;
+                    SSSlider.playerID = win.setTimeout(function () {
+                        remaining = stepTime;
 
-					this.stop();
-					remaining -= new Date() - start;
-				};
+                        var playEvent = SSSlider.attachPreventableEvent('sss.player.play');
+                        if (!playEvent)
+                            return;
 
-				this.restart = function(){
-					this.stop();
-					remaining = stepTime;
-					this.play();
-					SSSlider.$element.trigger('sss.player.restart');
-				};
+                        self.play();
 
-				this.setStepTime = function(newStepTime){
-					stepTime = newStepTime || stepTime;
-				};
+                    }, remaining);
+                };
 
-				this.getStepTime = function(){
-					return stepTime;
-				};
+                this.stop = function () {
+                    var playEvent = SSSlider.attachPreventableEvent('sss.player.stop');
+                    if (!playEvent)
+                        return;
 
-				this.getRemaining = function(){
-					return remaining;
-				}
-			};
+                    win.clearTimeout(SSSlider.playerID);
+                };
 
-			plugin.checkPauseOnHover = function(){
-				if (plugin.options.pauseOnHover){
-					SSSlider.$element.one('mousemove touchmove',function () {
-						SSSlider.player.pause();
-					});
+                this.pause = function () {
+                    var playEvent = SSSlider.attachPreventableEvent('sss.player.pause');
+                    if (!playEvent)
+                        return;
 
-					SSSlider.$element.on('mouseenter touchenter',function () {
-						SSSlider.player.pause();
-					}).on('mouseleave touchleave touchcancel', function () {
-						SSSlider.player.play();
-						SSSlider.$element.trigger('sss.player.resume');
-					});
-				}
-			};
+                    this.stop();
+                    remaining -= new Date() - start;
+                };
 
-			plugin.runPlayer = function(){
-				var stepTime = Math.abs(plugin.options.stepTime),
-					resumeTimer;
+                this.restart = function () {
+                    this.stop();
+                    remaining = stepTime;
+                    this.play();
+                    SSSlider.triggerEvent('sss.player.restart');
+                };
 
-				if (stepTime > 0){
+                this.setStepTime = function (newStepTime) {
+                    stepTime = newStepTime || stepTime;
+                };
 
-					SSSlider.player = new plugin.player(plugin.options.stepTime);
-					SSSlider.player.play();
-					SSSlider.player.isPaused = false;
+                this.getStepTime = function () {
+                    return stepTime;
+                };
 
-					plugin.checkPauseOnHover();
+                this.getRemaining = function () {
+                    return remaining;
+                }
+            };
 
-					SSSlider.$element.on('sss.player.pause', function(){
-						SSSlider.player.isPaused = true;
-						SSSlider.$element.addClass(plugin.options.pausedClass);
-					});
+            plugin.checkPauseOnHover = function () {
+                if (plugin.options.pauseOnHover) {
+                    SSSlider.$element.one('mousemove touchmove', function () {
+                        SSSlider.player.pause();
+                    });
 
-					SSSlider.$element.on('sss.player.resume', function(){
-						SSSlider.player.isPaused = false;
-						SSSlider.$element.
-							removeClass(plugin.options.pausedClass).
-							addClass(plugin.options.resumedClass);
+                    SSSlider.$element.on('mouseenter touchenter',function () {
+                        SSSlider.player.pause();
+                    }).on('mouseleave touchleave touchcancel', function () {
+                            SSSlider.player.play();
+                            SSSlider.triggerEvent('sss.player.resume');
+                        });
+                }
+            };
 
-						win.clearTimeout(resumeTimer);
-						resumeTimer = win.setTimeout(
-							function(){
-								SSSlider.$element.removeClass(plugin.options.resumedClass);
-							}, 1500
-						);
-					});
+            plugin.setupAutoPlayLogic = function () {
+                var resumeTimerID;
 
-					// restart player when move
-					SSSlider.$element.on('sss.move', function(){
-						SSSlider.player.restart();
-						if(SSSlider.player.isPaused)
-							SSSlider.player.pause();
-					});
+                SSSlider.onEvent('sss.player.play', function () {
+                    SSSlider.next();
+                });
 
-				}
-			};
+                SSSlider.onEvent('sss.player.pause', function () {
+                    SSSlider.player.isPaused = true;
 
-			plugin.runPlayer();
+                    if (plugin.options.addAdditionalClasses)
+                        SSSlider.$element.addClass(plugin.options.pausedClass);
+                });
 
-		}
+                SSSlider.onEvent('sss.player.resume', function () {
+                    SSSlider.player.isPaused = false;
 
-	});
+                    if (plugin.options.addAdditionalClasses) {
+                        SSSlider.$element.
+                            removeClass(plugin.options.pausedClass).
+                            addClass(plugin.options.resumedClass);
+
+                        if (resumeTimerID !== undefined)
+                            win.clearTimeout(resumeTimerID);
+
+                        resumeTimerID = win.setTimeout(
+                            function () {
+                                SSSlider.$element.removeClass(plugin.options.resumedClass);
+                            }, plugin.options.additionalClassesTime
+                        );
+                    }
+                });
+
+                // restart player after change slide
+                SSSlider.onEvent('sss.move', function () {
+                    SSSlider.player.restart();
+                    if (SSSlider.player.isPaused)
+                        SSSlider.player.pause();
+                });
+            };
+
+            plugin.enableAutoPlay = function () {
+                var stepTime = Math.abs(plugin.options.stepTime);
+
+                if (stepTime > 0) {
+                    plugin.setupAutoPlayLogic();
+
+                    SSSlider.player = new player(plugin.options.stepTime);
+                    SSSlider.player.play();
+                    SSSlider.player.isPaused = false;
+
+                    plugin.checkPauseOnHover();
+                }
+            };
+
+            plugin.enableAutoPlay();
+        }
+
+    });
 })(window);
