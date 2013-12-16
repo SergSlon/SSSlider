@@ -1,290 +1,510 @@
-/* * * *
- * SSSlider - jQuery modular slider
+/**
+ * @version 0.2
  *
- * Copyright (c) 2013 Sergei Lyamin
- * https://github.com/SergSlon
+ * @extends jQuery.fn
+ * @requires jQuery
+ *
+ * ======================================================
+ * SSSlider - jQuery modular slider
+ * ======================================================
+ *
+ * @author Sergei Liamin https://github.com/SergSlon
+ * @mail liamin.web@gmail.com
+ * @see https://github.com/SergSlon/SSSlider
+ *
+ * Copyright (c) 2013 Sergei Liamin
  *
  * Licensed under the MIT license:
  * http://www.opensource.org/licenses/mit-license.php
- * */
+ **/
 
-/*
-* EVENTS
-* ▬ sss.init
-* ▬ sss.beforeChangeSlide
-* ▬ sss.afterChangeSlide
-* ▬ sss.move
-* ▬ sss.prev
-* ▬ sss.next
-* */
+/**
+ * EVENTS
+ * @event sss.init              - fire when SSSlider was initialized
+ * @event sss.prev              - fire before going to the previous slide (can be prevented)
+ * @event sss.next              - fire before going to the next slide (can be prevented)
+ * @event sss.beforeChangeSlide - fire before change slide
+ * @event sss.move              - fire before change slide (can be prevented)
+ * @event sss.afterChangeSlide  - fire after change slide
+ **/
 
 ;(function ($, undefined) {
-	"use strict";
+    "use strict";
 
-	//==================================================================================================================
-	/* Private functions */
+    //==================================================================================================================
+    /* Private functions */
 
-	var getSlides = function () {
-		// if slide selector isn't defined,
-		// search slides by
-		// - first child element from slider layout
-		// or
-		// - first child class selector
-		this.options.activeSlide = this.options.activeSlide ||
-			this.$element.children()[0].nodeName ||
-			'.' + $(this.$element.children()[0]).attr('class');
-		this.$slides = this.$element.find(this.options.activeSlide);
-		return this.$slides;
-	};
+    /**
+     * preventing a piling up of event functions when using "onEvent" method in loops
+     *
+     * @private
+     * @returns {boolean} true if duplicated
+     */
+    var _eventFunctionIsDuplicated = function (event, fn) {
+        var duplicated = false,
+            duplicatedIndex;
 
-	//==================================================================================================================
+        $.each(this._events[event], function (idx) {
+            if ("" + this == "" + fn) {
+                duplicated = true;
+                duplicatedIndex = idx;
+                // finish the loop
+                return false;
+            }
+        });
 
-	var bind = function (f, o) {
-		if(f.bind)
-			return f.bind(o);
-		else
-			return function(){
-				// emulate bind function for ECMAScript 3
-				return f.apply(o, arguments);
-			}
-	};
+        if (duplicated)
+            this._events[event][duplicatedIndex] = fn;
 
-	//==================================================================================================================
+        return duplicated;
+    };
 
-	var pluginDefaults = {
+    /**
+     * for calling initialized plugins
+     *
+     * @private
+     * @param pluginFunction {function}
+     * @param pluginOptions {object}
+     */
+    var _callPlugin = function (pluginFunction, pluginOptions) {
+        if ($.isFunction(pluginFunction)) {
+            // inside plugin, assign "this" variable equals to the "pluginFunction" variable
+            var callPlugin = $.proxy(pluginFunction, $.extend(true, {}, pluginFunction), this, pluginOptions);
 
-		// [string] active slide selector
-		activeSlide: '.slide',
+            callPlugin();
+        }
+    };
 
-		// [string] active slide class name
-		activeClass: 'active',
+    //==================================================================================================================
 
-		// [int] slides per step
-		step: 1,
+    var pluginDefaults = {
 
-		// [bool] enable or disable loop
-		loop: true,
+        /**
+         * @property {string} slideSelector - slide selector
+         */
+        slideSelector: '.slide',
 
-		// [object] for extending plugins
-		// example: autoPlay:{speed:200}
-		plugins: {}
-	};
+        /**
+         * @property {string} activeClass - active slide class name
+         */
+        activeClass: 'active',
 
-	// Constructor function
-	var SSSlider = function (element, options, plugins) {
-		this.init('SSSlider', element, options, plugins);
-	};
+        /**
+         * @property {number} step - slides per step
+         */
+        step: 1,
 
-	SSSlider.prototype = {
-		constructor: SSSlider,
+        /**
+         * @property {bool} loop -  enable or disable loop
+         */
+        loop: true,
 
-		// SSSlider initialization function
-		init: function (name, element, options, plugins) {
-			// name is passed for extendability
-			this.name = name;
-			this.update(element, options, 0 ,plugins).addPlugins();
-			this.$element.trigger('sss.init');
-			return this;
-		},
+        /**
+         * @property {object} plugins - for extending plugins
+         *
+         * @example
+         *      pluginName:{
+		 *          optionName:optionValue
+		 *      }
+         */
+        plugins: {}
+    };
 
-		// update SSSlider data
-		update: function (element, options, activeSlideIndex, plugins) {
-			this.element = element;
-			this.$element = $(element);
-			this.plugins = plugins;
-			this.options = $.extend({}, $.fn[this.name].defaults, this.$element.data(), options);
-			this.$slides = getSlides.call(this);
+    /**
+     * main SSSlider class.
+     *
+     * @class SSSlider
+     * @param {HTMLElement} element - HTML DOM object on which plugin will be applied
+     * @param {Object} options - options that configure the plugin  @link {$.fn.SSSlider.defaults}
+     * @param plugins {Object,String} - plugins that are connected to the page
+     * @constructor
+     */
+    var SSSlider = function (element, options, plugins) {
+        this.init(element, options, plugins);
+    };
 
-			// define this.$activeSlide
-			activeSlideIndex = activeSlideIndex || false;
-			this.setActiveSlide(activeSlideIndex);
-			return this;
-		},
+    /**
+     * SSSlider methods
+     */
+    SSSlider.prototype = {
+        constructor: SSSlider,
 
-		// initializes SSSlider plugins
-		// and pass options to them
-		addPlugins: function () {
-			var plugins = this.options.plugins,
-				pluginOptions;
+        /**
+         * SSSlider initialization method
+         *
+         * @chainable
+         * @param {HTMLElement} element - HTML DOM object on which plugin will be applied
+         * @param {Object} options - options that configure the plugin  @link {$.fn.SSSlider.defaults}
+         * @param plugins {Object,String} - plugins that are connected to the page
+         */
+        init: function (element, options, plugins) {
+            this._events = this._events || [];
+            this.update(element, options, 0, plugins);
+            this.addPlugins();
+            this.triggerEvent('sss.init');
+            this.$element.trigger('sss.init');
+            return this;
+        },
 
-			if ($.type(plugins) === 'object'){
-				for (var plugin in plugins) {
-					pluginOptions = undefined;
+        /**
+         * if slide selector isn't defined, search slides by
+         *  - first child element from slider layout
+         *  or
+         *  - first child class selector
+         *
+         * @returns {SSSlider.$slides}
+         */
+        getSlides: function () {
+            this.options.slideSelector = this.options.slideSelector ||
+                this.$element.children()[0].nodeName ||
+                '.' + $(this.$element.children()[0]).attr('class');
+            this.$slides = this.$element.find(this.options.slideSelector);
+            return this.$slides;
+        },
 
-					if (!$.isEmptyObject(plugins[plugin]))
-						pluginOptions = plugins[plugin];
+        /**
+         * update SSSlider data - define main SSSlider variables
+         *
+         * @chainable
+         * @param {HTMLElement} element - HTML DOM object on which plugin will be applied
+         * @param {Object} options - options that configure the plugin @link {$.fn.SSSlider.defaults}
+         * @param {number} activeSlideIndex - index of the active slide
+         * @param plugins {Object,String} - plugins that are connected to the page
+         * @returns {SSSlider}
+         */
+        update: function (element, options, activeSlideIndex, plugins) {
+            this.element = element;
+            this.$element = $(element);
+            this.options = $.extend({}, $.fn.SSSlider.defaults, this.$element.data(), options);
+            this.$slides = this.getSlides();
+            this.plugins = plugins;
 
-					if ($.isFunction(this.plugins[plugin])){
-						var pluginFunction = this.plugins[plugin],
-						// inside plugin,
-						// assign "this" variable equals to the "pluginFunction" variable
-							callPlugin = bind.call(null, pluginFunction, pluginFunction);
+            activeSlideIndex = activeSlideIndex || false;
+            this.setActiveSlide(activeSlideIndex);
 
-						callPlugin (this, pluginOptions);
-					}
-				}
-			}
-			return this;
-		},
+            return this;
+        },
 
-		// return FALSE if event was prevented
-		/*
-		* EXAMPLE:
-		*
-		* var newEvent = this.attachPreventableEvent(newEvent);
-		* if (!newEvent)
-		*   return
-		* */
-		attachPreventableEvent: function (eventName) {
-			var event = $.Event(eventName);
+        /**
+         * initializes and call SSSlider plugins from SSSlider options,
+         * and pass plugin options to them
+         *
+         * @chainable
+         * @returns {SSSlider}
+         */
+        addPlugins: function () {
+            var plugins = this.options.plugins,
+                pluginFunction,
+                pluginOptions;
 
-			this.$element.trigger(event);
-			return (event.isDefaultPrevented() ? false : true);
-		},
+            if ($.type(plugins) === 'object') {
+                for (var plugin in plugins) {
+                    pluginFunction = this.plugins[plugin];
+                    pluginOptions = undefined;
 
-		validateSlideIndex: function (slideIndex) {
-			var defaultSlideIndex = 0,
-				slidesCount = this.$slides.length,
-				maxIndex = slidesCount - 1;
+                    if (!$.isEmptyObject(plugins[plugin]))
+                        pluginOptions = plugins[plugin];
 
-			slideIndex = (slideIndex === false ? defaultSlideIndex : slideIndex);
+                    _callPlugin.call(this, pluginFunction, pluginOptions);
+                }
+            }
+            return this;
+        },
 
-			if (slideIndex > maxIndex)
-				slideIndex = slideIndex - slidesCount;
-			else if (slideIndex < 0)
-				slideIndex = slidesCount + slideIndex;
+        /**
+         * add handler for the event, this is like $.on,
+         * but for specific slider (in cases when you have slider in slider)
+         *
+         * @chainable
+         * @param events {string}
+         * @param fn {function}
+         * @returns {SSSlider}
+         */
+        onEvent: function (events, fn) {
+            var self = this,
+                eventsArray = events.split(' ');
 
-			return slideIndex;
-		},
+            $.each(eventsArray, function (idx, event) {
+                if (event) {
+                    if (!self._events[event])
+                        self._events[event] = [];
 
-		removeActiveSlideData: function () {
-			if (this.$activeSlide)
-				this.$activeSlide.removeAttr('data-active').removeClass(this.options.activeClass);
-			return this;
-		},
+                    if (!_eventFunctionIsDuplicated.call(self, event, fn))
+                        self._events[event].push(fn);
+                }
+            });
 
-		setActiveSlideData: function () {
-			if (this.$activeSlide)
-				this.$activeSlide.attr('data-active', true).addClass(this.options.activeClass);
-			return this;
-		},
+            return this;
+        },
 
-		setActiveSlide: function (activeSlideIndex) {
-			activeSlideIndex = this.validateSlideIndex(activeSlideIndex);
+        /**
+         * call handlers for the event which added by "onEvent" method
+         *
+         * @chainable
+         * @param event {string}
+         * @returns {SSSlider}
+         */
+        triggerEvent: function (event) {
+            if (this._events[event] !== undefined) {
+                var functions = this._events[event];
+                $.each(functions, function (idx, func) {
+                    func();
+                });
+            }
 
-			this.removeActiveSlideData();
-			this.$activeSlide = this.$slides.eq(activeSlideIndex);
-			this.setActiveSlideData();
-			return this;
-		},
+            return this;
+        },
 
-		getActiveSlideIndex: function () {
-			var activeSlideIndex = this.$slides.index(this.$activeSlide);
+        /**
+         * return FALSE if event was prevented
+         *
+         * @param eventName {string}
+         * @example
+         *      var newEvent = this.attachPreventableEvent('eventName');
+         *      if (!newEvent)
+         *          return;
+         * @returns {boolean}
+         */
+        attachPreventableEvent: function (eventName) {
+            var event = $.Event(eventName);
 
-			//if not defined, set active slide to 0(first element)
-			if (activeSlideIndex === -1) {
-				this.setActiveSlide();
-				activeSlideIndex = 0;
-			}
+            this.triggerEvent(eventName);
+            this.$element.trigger(event);
 
-			return activeSlideIndex;
-		},
+            return (event.isDefaultPrevented() ? false : true);
+        },
 
-		// at first - search element by selector in slider layout,
-		// if nothing is found - search element in the whole document
-		// returns jQuery Object
-		findBySelector: function(selector){
-			// for searching elements outside slider layout
-			var $obj;
-			$obj = this.$element.find(selector);
-			$obj = $obj.length == 0 ? $(selector) : $obj;
-			return $obj;
-		},
+        /**
+         * @param slideIndex {number}
+         * @returns {number} correct slide index
+         */
+        validateSlideIndex: function (slideIndex) {
+            var defaultSlideIndex = 0,
+                slidesCount = this.$slides.length,
+                maxIndex = slidesCount - 1;
 
-		// method == prev || next
-		getFutureSlideIndex: function (method) {
-			var operation = (method == 'next') ? '+' : '-';
+            slideIndex = (slideIndex === false ? defaultSlideIndex : slideIndex);
 
-			switch (operation){
-				case '-':
-					return ( this.getActiveSlideIndex() - this.options.step );
-					break;
-				case '+':
-					return ( this.getActiveSlideIndex() + this.options.step );
-					break;
-			}
-			return ;
-		},
+            if (slideIndex > maxIndex)
+                slideIndex = slideIndex - slidesCount;
+            else if (slideIndex < 0)
+                slideIndex = slidesCount + slideIndex;
 
-		// change active slide index to the given
-		moveTo: function (slideIndex) {
-			var loop = this.options.loop,
-				maxIndex = this.$slides.length - 1;
+            return slideIndex;
+        },
 
-			// move or stay in current position
-			if ((loop == false && slideIndex <= maxIndex && slideIndex >= 0) || (loop == true)){
-				this.$element.trigger('sss.beforeChangeSlide');
+        /**
+         * remove all added data from the active slide
+         *
+         * @chainable
+         * @returns {SSSlider}
+         */
+        removeActiveSlideData: function () {
+            if (this.$activeSlide)
+                this.$activeSlide.removeAttr('data-active').removeClass(this.options.activeClass);
+            return this;
+        },
 
-				var moveEvent = this.attachPreventableEvent('sss.move');
-				if(!moveEvent)
-					return;
+        /**
+         * add data to the active slide
+         *
+         * @returns {SSSlider}
+         */
+        setActiveSlideData: function () {
+            if (this.$activeSlide)
+                this.$activeSlide.attr('data-active', true).addClass(this.options.activeClass);
+            return this;
+        },
 
-				this.setActiveSlide(slideIndex);
+        /**
+         * @chainable
+         * @param activeSlideIndex {number}
+         * @returns {SSSlider}
+         */
+        setActiveSlide: function (activeSlideIndex) {
+            activeSlideIndex = this.validateSlideIndex(activeSlideIndex);
 
-				this.$element.trigger('sss.afterChangeSlide');
-			}
-			return this;
-		},
+            this.removeActiveSlideData();
+            this.$activeSlide = this.$slides.eq(activeSlideIndex);
+            this.setActiveSlideData();
+            return this;
+        },
 
-		prev: function(){
-			var futureSlideIndex = this.getFutureSlideIndex('prev'),
-				prevEvent = this.attachPreventableEvent('sss.prev');
+        /**
+         * @returns {number} active slide index
+         */
+        getActiveSlideIndex: function () {
+            var activeSlideIndex = this.$slides.index(this.$activeSlide);
 
-			if(!prevEvent)
-				return;
+            //if not defined, set active slide to 0(first element)
+            if (activeSlideIndex === -1) {
+                this.setActiveSlide();
+                activeSlideIndex = 0;
+            }
 
-			this.moveTo(futureSlideIndex);
-			return this;
-		},
+            return activeSlideIndex;
+        },
 
-		next: function(){
-			var futureSlideIndex = this.getFutureSlideIndex('next'),
-				nextEvent = this.attachPreventableEvent('sss.next');
+        /**
+         * at first - search element by selector in slider layout,
+         * if nothing is found - search element in the whole document
+         *
+         * @param selector
+         * @returns {*|object} jQuery Object
+         */
+        findBySelector: function (selector) {
+            // for searching elements outside slider layout
+            var $obj;
+            $obj = this.$element.find(selector);
+            $obj = $obj.length == 0 ? $(selector) : $obj;
 
-			if(!nextEvent)
-				return;
+            if ($obj.length !== 0)
+                return $obj;
+        },
 
-			this.moveTo(futureSlideIndex);
-			return this;
-		},
+        /**
+         * check if can move to the given slide index
+         *
+         * @param slideIndex {number}
+         * @returns {boolean}
+         */
+        canMoveTo: function (slideIndex) {
+            var loop = this.options.loop,
+                maxIndex = this.$slides.length - 1;
 
-		restart: function (activeSlideIndex, plugins) {
-			this.removeActiveSlideData();
-			this.update(this.element, this.options, activeSlideIndex, plugins);
-			return this;
-		}
-	};
+            return !!((loop == false && slideIndex <= maxIndex && slideIndex >= 0) || (loop == true));
+        },
+
+
+        /**
+         * change active slide index to the given,
+         * assign "this.futureSlideIndex" and "this.$futureSlide" variables for using with "sss.beforeChangeSlide" event
+         *
+         * @chainable
+         * @param slideIndex {number}
+         * @returns {SSSlider}
+         */
+        moveTo: function (slideIndex) {
+
+            if (this.canMoveTo(slideIndex)) {
+
+                this.futureSlideIndex = slideIndex;
+                this.$futureSlide = this.$slides.eq(slideIndex);
+
+                if (this.getActiveSlideIndex() === this.futureSlideIndex)
+                    return this;
+
+                this.triggerEvent('sss.beforeChangeSlide');
+                this.$element.trigger('sss.beforeChangeSlide');
+
+                var moveEvent = this.attachPreventableEvent('sss.move');
+                if (!moveEvent)
+                    return;
+
+                this.setActiveSlide(slideIndex);
+
+                delete this.futureSlideIndex;
+                delete this.$futureSlide;
+
+                this.triggerEvent('sss.afterChangeSlide');
+                this.$element.trigger('sss.afterChangeSlide');
+
+                return this;
+            }
+
+            return this;
+        },
+
+        /**
+         * move to the prev slide
+         *
+         * @chainable
+         * @returns {SSSlider}
+         */
+        prev: function () {
+            var futureSlideIndex = this.getActiveSlideIndex() - this.options.step,
+                prevEvent = this.attachPreventableEvent('sss.prev');
+
+            if (!prevEvent)
+                return;
+
+            this.moveTo(futureSlideIndex);
+            return this;
+        },
+
+        /**
+         * move to the next slide
+         *
+         * @chainable
+         * @returns {SSSlider}
+         */
+        next: function () {
+            var futureSlideIndex = this.getActiveSlideIndex() + this.options.step,
+                nextEvent = this.attachPreventableEvent('sss.next');
+
+            if (!nextEvent)
+                return;
+
+            this.moveTo(futureSlideIndex);
+            return this;
+        },
+
+        /**
+         * restart the plugin with the given options
+         *
+         * @chainable
+         * @param activeSlideIndex {number}
+         * @param plugins {object}
+         * @returns {SSSlider}
+         */
+        restart: function (activeSlideIndex, plugins) {
+            this.removeActiveSlideData();
+            this.update(this.element, this.options, activeSlideIndex, plugins);
+            return this;
+        }
+    };
 
 //======================================================================================================================
 
-	$.fn.SSSlider = function (option, param) {
-		return this.each(function () {
-			var $this = $(this),
-				data = $this.data('SSSlider'),
-				options = typeof option == 'object' && option,
-				plugins = $.extend({}, $.fn.SSSlider.plugins);
-			if (!data) $this.data('SSSlider', (data = new SSSlider(this, options, plugins)));
-			if (typeof option == 'string') data[option].apply(data, param);
-		});
-	};
+    /**
+     * applies SSSlider plugin to one or more jQuery objects.
+     * @example
+     *          $('.slider').SSSlider({...});
+     *          var slider = $('.slider').data('SSSlider');
+     *          slider(method, options)
+     *
+     * @param option
+     * @param param
+     * @returns {*}
+     * @constructor
+     */
+    $.fn.SSSlider = function (option, param) {
+        return this.each(function () {
+            var $this = $(this),
+                data = $this.data('SSSlider'),
+                options = typeof option == 'object' && option,
+                plugins = $.extend({}, $.fn.SSSlider.plugins);
+            if (!data) $this.data('SSSlider', (data = new SSSlider(this, options, plugins)));
+            if (typeof option == 'string') data[option].apply(data, param);
+        });
+    };
 
-	// constructor
-	$.fn.SSSlider.Constructor = SSSlider;
+    /**
+     * set the constructor
+     * @type {Function}
+     */
+    $.fn.SSSlider.Constructor = SSSlider;
 
-	// default options
-	$.fn.SSSlider.defaults = pluginDefaults;
+    /**
+     * set default options
+     *
+     * @type {{slideSelector: string, activeClass: string, step: number, loop: boolean, plugins: {}}}
+     */
+    $.fn.SSSlider.defaults = pluginDefaults;
 
-	// default plugins
-	$.fn.SSSlider.plugins = {};
+    /**
+     * set default plugins
+     */
+    $.fn.SSSlider.plugins = {};
 
 })(window.jQuery);
