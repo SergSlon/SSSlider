@@ -1,63 +1,104 @@
-/* * * *
- * plugin Example
+/**
+ * @version 1.4
  *
- * this file is a part of SSSlider - jQuery modular slider
+ * @extension plugin Example
+ * @extends $.fn.SSSlider.plugins
+ * @requires jQuery SSSlider plugin
  *
- * Copyright (c) 2013 Sergei Lyamin
- * https://github.com/SergSlon
+ * ======================================================
+ * PLUGIN DESCRIPTION HERE
+ * ======================================================
+ *
+ * @author Sergei Liamin https://github.com/SergSlon
+ * @see https://github.com/SergSlon/SSSlider
+ *
+ * Copyright (c) 2013 Sergei Liamin
  *
  * Licensed under the MIT license:
  * http://www.opensource.org/licenses/mit-license.php
- * */
+ *
+ * this file is a part of SSSlider - jQuery modular slider
+ **/
 
-;(function () {
-	"use strict";
+/* !!! ============ !!!
+ * !!! DEPENDENCIES !!!
+ * !!! ============ !!!
+ *
+ *  ▬ "dependency plugin(library) name"
+ *    @author author name
+ *    @url    plugin(library) url
+ */
 
-	$.extend($.fn.SSSlider.plugins, {
 
-		// plugin name
-		pluginExample: function (SSSlider, options) {
-			var plugin = this,
+;
+(function () {
+    "use strict";
 
-				// default options
-				defaults = {
-					pluginOption: 'pluginOptionValue'
-				};
+    $.extend($.fn.SSSlider.plugins, {
 
-			// plugin options
-			// use
-			//     plugin.options = $.extend(true, {}, defaults, options);
-			// for deep copy
-			plugin.options = $.extend({}, defaults, options);
+        /**
+         * pluginExample - plugin name, the same as filename, but without .js
+         *
+         * @param SSSlider {object} reference to the SSSlider object
+         * @param options {object} options that passed to the plugin function from SSSlider plugin initialization
+         */
+        pluginExample: function (SSSlider, options) {
+            var plugin = this,
 
-			// add new SSSlider method
-			// or
-			// completely change SSSlider method
-			SSSlider.methodName = function () {
-				console.log('pluginName methodName called');
-			};
+                /**
+                 * default plugin options
+                 */
+                    defaults = {
+                    pluginOption: 'pluginOptionValue'
+                };
 
-			// add new plugin method
-			plugin.method = function(){
-				//method code
-			};
+            /**
+             * plugin options
+             * =========================================================================================================
+             * SSSlider.plugins.pluginExample.options passes for possibility change options after slider initialization
+             * =========================================================================================================
+             * use
+             *      plugin.options = SSSlider.plugins.pluginExample.options = $.extend(true, {}, defaults, options);
+             * for deep copy
+             */
+            plugin.options = SSSlider.plugins.pluginExample.options = $.extend({}, defaults, options);
 
-			// add new functionality to SSSlider methods by extending them
-			SSSlider.next = (function (fn) {
-				return function () {
-					fn.call(this);
-					console.log('next called');
-				};
-			})(SSSlider.next);
+            /**
+             * add new SSSlider method
+             *    or
+             * completely change SSSlider method
+             */
+            SSSlider.methodName = function () {
+                console.log('pluginName methodName called');
+            };
 
-			//events usage
-			SSSlider.$element.on('sss.init', function () {
-				console.group("SSSlider");
-				console.log("Hello world !!! ");
-				console.groupEnd()
-			});
+            /**
+             * add new plugin method
+             */
+            plugin.method = function () {
+                //method code
+            };
 
-		}
+            /**
+             * add new functionality to SSSlider methods by extending them
+             */
+            SSSlider.next = (function (fn) {
+                return function () {
+                    fn.call(this);
+                    console.log('next called');
+                };
+            })(SSSlider.next);
 
-	});
+            /**
+             * events usage
+             */
+            SSSlider.onEvent('sss.init', function () {
+                console.group("SSSlider");
+                console.log("Hello world !!! ");
+                console.groupEnd()
+            });
+
+        }
+
+    });
 })();
