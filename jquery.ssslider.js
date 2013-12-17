@@ -104,8 +104,8 @@
          *
          * @example
          *      pluginName:{
-		 *          optionName:optionValue
-		 *      }
+         *          optionName:optionValue
+         *      }
          */
         plugins: {}
     };
@@ -116,11 +116,12 @@
      * @class SSSlider
      * @param {HTMLElement} element - HTML DOM object on which plugin will be applied
      * @param {Object} options - options that configure the plugin  @link {$.fn.SSSlider.defaults}
-     * @param plugins {Object,String} - plugins that are connected to the page
+     * @param extensions {Object} - like plugins, but they don't need options, and used for adding to the SSSlider new functionality
+     * @param plugins {Object} - plugins that are connected to the page
      * @constructor
      */
-    var SSSlider = function (element, options, plugins) {
-        this.init(element, options, plugins);
+    var SSSlider = function (element, options, extensions, plugins) {
+        this.init(element, options, extensions, plugins);
     };
 
     /**
@@ -134,13 +135,15 @@
          *
          * @chainable
          * @param {HTMLElement} element - HTML DOM object on which plugin will be applied
-         * @param {Object} options - options that configure the plugin  @link {$.fn.SSSlider.defaults}
-         * @param plugins {Object,String} - plugins that are connected to the page
+         * @param {Object} options - options that configure the plugin  @link
+         * @param extensions {Object} - like plugins, but they don't need options, and used for adding to the SSSlider new functionality
+         * @param plugins {Object} - plugins that are connected to the page
          */
-        init: function (element, options, plugins) {
+        init: function (element, options, extensions, plugins) {
             this._events = this._events || [];
-            this.update(element, options, 0, plugins);
-            this.addPlugins();
+            this.update(element, options, 0, extensions, plugins);
+            this.enableExtensions();
+            this.enablePlugins();
             this.triggerEvent('sss.init');
             this.$element.trigger('sss.init');
             return this;
@@ -169,18 +172,41 @@
          * @param {HTMLElement} element - HTML DOM object on which plugin will be applied
          * @param {Object} options - options that configure the plugin @link {$.fn.SSSlider.defaults}
          * @param {number} activeSlideIndex - index of the active slide
-         * @param plugins {Object,String} - plugins that are connected to the page
+         * @param plugins {Object} - plugins that are connected to the page
+         * @param extensions {Object} - like plugins, but they don't need options, and used for adding to the SSSlider new functionality
          * @returns {SSSlider}
          */
-        update: function (element, options, activeSlideIndex, plugins) {
+        update: function (element, options, activeSlideIndex, extensions, plugins) {
             this.element = element;
             this.$element = $(element);
             this.options = $.extend({}, $.fn.SSSlider.defaults, this.$element.data(), options);
             this.$slides = this.getSlides();
+            this.extensions = extensions;
             this.plugins = plugins;
 
             activeSlideIndex = activeSlideIndex || false;
             this.setActiveSlide(activeSlideIndex);
+
+            return this;
+        },
+
+        /**
+         * initializes and call SSSlider extensions
+         *
+         * @chainable
+         * @returns {SSSlider}
+         */
+        enableExtensions: function(){
+            var extensions = this.extensions;
+
+            if ($.type(extensions) === 'object') {
+                for (var extension in extensions) {
+                    if ($.isFunction(this.extensions[extension])){
+                        var enableExtension = $.proxy(this.extensions[extension], this.extensions[extension], this);
+                        enableExtension();
+                    }
+                }
+            }
 
             return this;
         },
@@ -192,7 +218,7 @@
          * @chainable
          * @returns {SSSlider}
          */
-        addPlugins: function () {
+        enablePlugins: function () {
             var plugins = this.options.plugins,
                 pluginFunction,
                 pluginOptions;
@@ -408,8 +434,6 @@
 
                 this.triggerEvent('sss.afterChangeSlide');
                 this.$element.trigger('sss.afterChangeSlide');
-
-                return this;
             }
 
             return this;
@@ -483,8 +507,9 @@
             var $this = $(this),
                 data = $this.data('SSSlider'),
                 options = typeof option == 'object' && option,
+                extensions = $.extend({}, $.fn.SSSlider.extensions),
                 plugins = $.extend({}, $.fn.SSSlider.plugins);
-            if (!data) $this.data('SSSlider', (data = new SSSlider(this, options, plugins)));
+            if (!data) $this.data('SSSlider', (data = new SSSlider(this, options, extensions, plugins)));
             if (typeof option == 'string') data[option].apply(data, param);
         });
     };
@@ -501,6 +526,11 @@
      * @type {{slideSelector: string, activeClass: string, step: number, loop: boolean, plugins: {}}}
      */
     $.fn.SSSlider.defaults = pluginDefaults;
+
+    /**
+     * set default extensions
+     */
+    $.fn.SSSlider.extensions = {};
 
     /**
      * set default plugins
