@@ -29,9 +29,7 @@
  *    @url    plugin(library) url
  */
 
-
-;
-(function () {
+;(function () {
     "use strict";
 
     $.extend($.fn.SSSlider.plugins, {
