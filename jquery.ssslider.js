@@ -247,8 +247,8 @@
         triggerEvent: function (event) {
             if (this._events[event] !== undefined) {
                 var functions = this._events[event];
-                $.each(functions, function (idx, func) {
-                    func();
+                $.each(functions, function () {
+                    this();
                 });
             }
 
