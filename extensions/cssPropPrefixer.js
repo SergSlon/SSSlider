@@ -46,7 +46,7 @@
                         $element.css(this + cssProp, propValue);
                     });
                 } else
-                    $.error('can\'t find object ' + $element);
+                    $.error('can\'t find object with selector ' + $element.selector);
             };
 
         }

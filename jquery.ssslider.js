@@ -477,13 +477,19 @@
          * restart the plugin with the given options
          *
          * @chainable
+         * @param options {object}
          * @param activeSlideIndex {number}
          * @param plugins {object}
          * @returns {SSSlider}
          */
-        restart: function (activeSlideIndex, plugins) {
+        restart: function (options, activeSlideIndex, plugins) {
+            options = options || this.options;
+
+            if($.empty(options))
+                options = this.options;
+
             this.removeActiveSlideData();
-            this.update(this.element, this.options, activeSlideIndex, plugins);
+            this.update(this.element, options, activeSlideIndex, plugins);
             return this;
         }
     };
