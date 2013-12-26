@@ -1,5 +1,5 @@
 /**
- * @version 1.0
+ * @version 1.1
  *
  * @extension ccs property prefixer
  * @extends $.fn.SSSlider.plugins
@@ -45,7 +45,8 @@
                     $.each(prefixes, function(){
                         $element.css(this + cssProp, propValue);
                     });
-                }
+                } else
+                    $.error('can\'t find object ' + $element);
             };
 
         }
